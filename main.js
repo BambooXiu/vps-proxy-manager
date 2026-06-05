@@ -8,6 +8,25 @@ let mainWindow;
 const sshManager = new SSHManager();
 const configManager = new ConfigManager();
 
+// SSH 状态变化推送到渲染进程
+sshManager.onStatusChange = (status) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('ssh:status-change', status);
+  }
+};
+
+// ==================== Error Boundary ====================
+function wrapHandler(handler) {
+  return async (event, ...args) => {
+    try {
+      return await handler(event, ...args);
+    } catch (error) {
+      console.error('IPC Handler Error:', error);
+      return { success: false, error: error.message || 'Unknown error' };
+    }
+  };
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 900,
@@ -48,60 +67,60 @@ app.on('window-all-closed', () => {
 // ==================== IPC Handlers ====================
 
 // 配置管理
-ipcMain.handle('config:load', async () => {
+ipcMain.handle('config:load', wrapHandler(async () => {
   return configManager.load();
-});
+}));
 
-ipcMain.handle('config:save', async (event, config) => {
+ipcMain.handle('config:save', wrapHandler(async (event, config) => {
   return configManager.save(config);
-});
+}));
 
 // SSH 连接
-ipcMain.handle('ssh:test', async (event, vpsConfig) => {
+ipcMain.handle('ssh:test', wrapHandler(async (event, vpsConfig) => {
   return sshManager.testConnection(vpsConfig);
-});
+}));
 
-ipcMain.handle('ssh:connect', async (event, vpsConfig) => {
+ipcMain.handle('ssh:connect', wrapHandler(async (event, vpsConfig) => {
   return sshManager.connect(vpsConfig);
-});
+}));
 
-ipcMain.handle('ssh:disconnect', async () => {
+ipcMain.handle('ssh:disconnect', wrapHandler(async () => {
   return sshManager.disconnect();
-});
+}));
 
 // Xray 管理
-ipcMain.handle('xray:status', async () => {
+ipcMain.handle('xray:status', wrapHandler(async () => {
   return sshManager.exec('systemctl is-active xray && systemctl is-enabled xray');
-});
+}));
 
-ipcMain.handle('xray:current-mode', async () => {
+ipcMain.handle('xray:current-mode', wrapHandler(async () => {
   return sshManager.exec(
     'if [ -f /usr/local/etc/xray/config.json ]; then ' +
     'proto=$(python3 -c "import json; print(json.load(open(\'/usr/local/etc/xray/config.json\'))[\'outbounds\'][0][\'protocol\'])" 2>/dev/null || echo "unknown"); ' +
     'echo "$proto"; else echo "not_installed"; fi'
   );
-});
+}));
 
-ipcMain.handle('xray:switch-mode', async (event, mode) => {
+ipcMain.handle('xray:switch-mode', wrapHandler(async (event, mode) => {
   if (mode !== 'iproyal' && mode !== 'direct') {
     return { success: false, error: 'Invalid mode' };
   }
   const cmd = `cp /usr/local/etc/xray/modes/${mode}.json /usr/local/etc/xray/config.json && systemctl restart xray && sleep 1 && systemctl is-active xray`;
   return sshManager.exec(cmd);
-});
+}));
 
-ipcMain.handle('xray:verify-ip', async () => {
+ipcMain.handle('xray:verify-ip', wrapHandler(async () => {
   return sshManager.exec('curl -s --max-time 10 https://ipinfo.io/ip');
-});
+}));
 
-ipcMain.handle('xray:verify-iproyal', async (event, iproyalConfig) => {
+ipcMain.handle('xray:verify-iproyal', wrapHandler(async (event, iproyalConfig) => {
   const { address, port, username, password } = iproyalConfig;
   const cmd = `curl -s --max-time 10 --socks5-hostname "${username}:${password}@${address}:${port}" https://ipinfo.io/ip`;
   return sshManager.exec(cmd);
-});
+}));
 
 // 一键部署
-ipcMain.handle('deploy:run', async (event, config) => {
+ipcMain.handle('deploy:run', wrapHandler(async (event, config) => {
   const { vps, iproyal, xray } = config;
 
   const steps = [];
@@ -251,10 +270,10 @@ esac`;
   } catch (error) {
     return { success: false, error: error.message, steps };
   }
-});
+}));
 
 // 客户端配置生成
-ipcMain.handle('client:generate-config', async (event, params) => {
+ipcMain.handle('client:generate-config', wrapHandler(async (event, params) => {
   const { vpsIP, uuid, publicKey, shortId } = params;
   const vlessLink = `vless://${uuid}@${vpsIP}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.microsoft.com&fp=chrome&pbk=${publicKey}&sid=${shortId}&type=tcp#VPS-Proxy`;
 
@@ -327,10 +346,10 @@ ipcMain.handle('client:generate-config', async (event, params) => {
       },
     },
   };
-});
+}));
 
 // 一键优化（BBR + Xray 配置热更新）
-ipcMain.handle('ssh:optimize', async (event, vpsConfig) => {
+ipcMain.handle('ssh:optimize', wrapHandler(async (event, vpsConfig) => {
   const steps = [];
   const runStep = async (name, cmd) => {
     const result = await sshManager.exec(cmd);
@@ -400,26 +419,22 @@ if os.path.isdir(modes):
   } catch (error) {
     return { success: false, error: error.message, steps };
   }
-});
+}));
 
 // 系统操作
-ipcMain.handle('system:open-url', async (event, url) => {
+ipcMain.handle('system:open-url', wrapHandler(async (event, url) => {
   shell.openExternal(url);
-});
+}));
 
 // QR Code 生成
-ipcMain.handle('qrcode:generate', async (event, text) => {
-  try {
-    const dataUrl = await QRCode.toDataURL(text, {
-      width: 256,
-      margin: 2,
-      color: {
-        dark: '#1e1e2e',
-        light: '#ffffff',
-      },
-    });
-    return { success: true, dataUrl };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
+ipcMain.handle('qrcode:generate', wrapHandler(async (event, text) => {
+  const dataUrl = await QRCode.toDataURL(text, {
+    width: 256,
+    margin: 2,
+    color: {
+      dark: '#1e1e2e',
+      light: '#ffffff',
+    },
+  });
+  return { success: true, dataUrl };
+}));

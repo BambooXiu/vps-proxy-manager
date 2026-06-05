@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('api', {
     connect: (vpsConfig) => ipcRenderer.invoke('ssh:connect', vpsConfig),
     disconnect: () => ipcRenderer.invoke('ssh:disconnect'),
     optimize: (vpsConfig) => ipcRenderer.invoke('ssh:optimize', vpsConfig),
+    onStatusChange: (callback) => {
+      ipcRenderer.on('ssh:status-change', (event, status) => callback(status));
+    },
   },
 
   // Xray

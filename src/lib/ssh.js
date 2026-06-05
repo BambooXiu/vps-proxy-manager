@@ -4,6 +4,18 @@ class SSHManager {
   constructor() {
     this.conn = null;
     this.connected = false;
+    this.config = null;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 3;
+    this.reconnectDelay = 2000;
+    this.onStatusChange = null;
+    this.isReconnecting = false;
+  }
+
+  setStatus(status, message = '') {
+    if (this.onStatusChange) {
+      this.onStatusChange({ status, message });
+    }
   }
 
   async connect(config) {
@@ -12,21 +24,34 @@ class SSHManager {
         this.conn.end();
       }
 
+      this.config = config;
       this.conn = new Client();
 
       this.conn.on('ready', () => {
         this.connected = true;
+        this.reconnectAttempts = 0;
+        this.isReconnecting = false;
+        this.setStatus('connected', '已连接');
         resolve({ success: true });
       });
 
       this.conn.on('error', (err) => {
         this.connected = false;
-        resolve({ success: false, error: err.message });
+        this.setStatus('error', err.message);
+        if (!this.isReconnecting) {
+          resolve({ success: false, error: err.message });
+        }
       });
 
       this.conn.on('close', () => {
         this.connected = false;
+        if (!this.isReconnecting) {
+          this.setStatus('disconnected', '连接断开');
+          this.tryReconnect();
+        }
       });
+
+      this.setStatus('connecting', '连接中...');
 
       const connConfig = {
         host: config.host,
@@ -45,6 +70,27 @@ class SSHManager {
 
       this.conn.connect(connConfig);
     });
+  }
+
+  async tryReconnect() {
+    if (!this.config || this.isReconnecting) return;
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      this.setStatus('failed', '重连失败，请手动刷新');
+      return;
+    }
+
+    this.isReconnecting = true;
+    this.reconnectAttempts++;
+    this.setStatus('reconnecting', `重连中 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+
+    await new Promise(resolve => setTimeout(resolve, this.reconnectDelay));
+
+    try {
+      await this.connect(this.config);
+    } catch (error) {
+      this.isReconnecting = false;
+      this.tryReconnect();
+    }
   }
 
   async testConnection(config) {
@@ -97,10 +143,13 @@ class SSHManager {
   }
 
   disconnect() {
+    this.isReconnecting = false;
+    this.reconnectAttempts = 0;
     if (this.conn) {
       this.conn.end();
       this.conn = null;
       this.connected = false;
+      this.setStatus('disconnected', '已断开');
     }
   }
 
