@@ -56,6 +56,13 @@
           </svg>
           <span>部署</span>
         </li>
+        <li class="nav-item" data-page="guide">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+          <span>教程</span>
+        </li>
       </ul>
 
       <div class="sidebar-footer">
@@ -352,6 +359,221 @@
           <div class="deploy-log" id="deployLog" style="display: none;">
             <h3>部署日志</h3>
             <div class="log-content" id="logContent"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 教程页面 -->
+      <div class="page" id="page-guide">
+        <div class="page-header">
+          <h1>使用教程</h1>
+        </div>
+
+        <div class="guide-content">
+          <!-- 快速开始 -->
+          <div class="guide-section">
+            <h2>快速开始</h2>
+            <div class="guide-steps">
+              <div class="guide-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <h3>配置 VPS 连接</h3>
+                  <p>进入<strong>设置</strong>页面，填入你的 VPS 信息：</p>
+                  <ul>
+                    <li>主机地址（IP 或域名）</li>
+                    <li>SSH 端口（默认 22）</li>
+                    <li>用户名（通常为 root）</li>
+                    <li>认证方式：密码或 SSH 密钥</li>
+                  </ul>
+                  <p class="tip">点击"测试连接"确认能正常连接到 VPS</p>
+                </div>
+              </div>
+
+              <div class="guide-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <h3>配置 IPRoyal 代理</h3>
+                  <p>在设置页面下方填入 IPRoyal 代理信息：</p>
+                  <ul>
+                    <li>代理地址（如 proxy.iproyal.com）</li>
+                    <li>端口号</li>
+                    <li>用户名和密码</li>
+                  </ul>
+                  <p class="tip">IPRoyal 账号可在 <a href="#" onclick="window.api.system.openUrl('https://iproyal.com'); return false;">iproyal.com</a> 注册获取</p>
+                </div>
+              </div>
+
+              <div class="guide-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h3>一键部署</h3>
+                  <p>进入<strong>部署</strong>页面，点击"开始部署"按钮。</p>
+                  <p>系统将自动完成以下操作：</p>
+                  <ul>
+                    <li>安装 Xray-core</li>
+                    <li>生成 VLESS + Reality 配置</li>
+                    <li>配置 IPRoyal 和直连两种模式</li>
+                    <li>启用 BBR 拥塞控制优化</li>
+                    <li>配置防火墙规则</li>
+                  </ul>
+                  <p class="tip">部署过程约需 2-5 分钟，请耐心等待</p>
+                </div>
+              </div>
+
+              <div class="guide-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                  <h3>获取客户端配置</h3>
+                  <p>部署完成后，进入<strong>客户端</strong>页面：</p>
+                  <ul>
+                    <li>扫描二维码导入配置（推荐）</li>
+                    <li>复制 VLESS 链接导入</li>
+                    <li>复制完整 JSON 配置导入 v2rayN</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="guide-step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                  <h3>模式切换</h3>
+                  <p>在<strong>仪表盘</strong>页面可以随时切换代理模式：</p>
+                  <ul>
+                    <li><strong>IPRoyal 模式</strong>：流量通过 IPRoyal 代理出口，IP 显示为 194.50.146.79</li>
+                    <li><strong>直连模式</strong>：流量直接从 VPS 出口，IP 显示为 VPS 地址</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 架构说明 -->
+          <div class="guide-section">
+            <h2>架构说明</h2>
+            <div class="guide-architecture">
+              <pre class="architecture-diagram">
+用户设备 (Windows/macOS/Android/iOS)
+        │
+        │ VLESS + Reality (加密传输)
+        ▼
+RackNerd VPS 运行 Xray-core
+        │
+        │ SOCKS5 代理
+        ▼
+IPRoyal 代理服务器 (194.50.146.79)
+        │
+        ▼
+目标网站</pre>
+              <p class="guide-note">采用 VLESS + Reality 协议，具有更好的隐蔽性和抗封锁能力</p>
+            </div>
+          </div>
+
+          <!-- 常见问题 -->
+          <div class="guide-section">
+            <h2>常见问题</h2>
+            <div class="guide-faq">
+              <div class="faq-item">
+                <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                  <span>部署失败怎么办？</span>
+                  <svg class="faq-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+                <div class="faq-answer">
+                  <p>常见原因及解决方法：</p>
+                  <ul>
+                    <li>VPS 系统不是 Debian/Ubuntu - 建议使用 Ubuntu 20.04+</li>
+                    <li>SSH 连接不稳定 - 检查网络，尝试使用密钥认证</li>
+                    <li>端口被占用 - 确保 443 端口未被其他服务占用</li>
+                    <li>内存不足 - 建议至少 512MB 内存</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                  <span>如何更新 Xray 版本？</span>
+                  <svg class="faq-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+                <div class="faq-answer">
+                  <p>连接 VPS 后，SSH 执行以下命令：</p>
+                  <code>bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install</code>
+                  <p>更新后需重启：systemctl restart xray</p>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                  <span>连接速度慢怎么优化？</span>
+                  <svg class="faq-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+                <div class="faq-answer">
+                  <p>优化建议：</p>
+                  <ul>
+                    <li>确保 BBR 已启用（部署时自动配置）</li>
+                    <li>选择距离较近的 VPS 节点</li>
+                    <li>使用支持 MUX 的客户端（如 v2rayN）</li>
+                    <li>避免高峰时段使用</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                  <span>IPRoyal 和直连模式有什么区别？</span>
+                  <svg class="faq-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+                <div class="faq-answer">
+                  <ul>
+                    <li><strong>IPRoyal 模式</strong>：出口 IP 为 194.50.146.79（美国 Delaware），适合需要特定地区 IP 的场景</li>
+                    <li><strong>直连模式</strong>：出口 IP 为 VPS 本身的 IP，速度更快，适合普通访问</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 免责声明 -->
+          <div class="guide-section disclaimer-section">
+            <h2>免责声明</h2>
+            <div class="disclaimer">
+              <p><strong>请在使用前仔细阅读以下声明：</strong></p>
+              <ol>
+                <li>本工具仅供学习和研究使用，请勿用于任何违法违规用途。</li>
+                <li>使用者应遵守所在国家/地区的法律法规，因使用本工具产生的一切法律责任由使用者自行承担。</li>
+                <li>本工具不保证服务的稳定性、安全性和可用性，使用者应自行承担使用风险。</li>
+                <li>本工具不对因使用或无法使用本工具所导致的任何直接或间接损失承担责任。</li>
+                <li>使用本工具即表示您已充分理解并同意上述声明。</li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- 关于作者 -->
+          <div class="guide-section about-section">
+            <h2>关于</h2>
+            <div class="about-author">
+              <div class="author-info">
+                <div class="author-avatar">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                </div>
+                <div class="author-details">
+                  <div class="author-name">修之竹</div>
+                  <div class="author-desc">开发者</div>
+                </div>
+              </div>
+              <div class="app-version">
+                <span>之竹Proxy v1.0.0</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
