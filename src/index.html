@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;">
+  <title>VPS Proxy Manager</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 标题栏拖拽区域 -->
+  <div class="titlebar"></div>
+
+  <div class="app">
+    <!-- 侧边栏 -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <div class="app-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <span class="app-title">VPS Proxy</span>
+      </div>
+
+      <ul class="nav-list">
+        <li class="nav-item active" data-page="dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          <span>仪表盘</span>
+        </li>
+        <li class="nav-item" data-page="settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <span>设置</span>
+        </li>
+        <li class="nav-item" data-page="client">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+            <line x1="12" y1="18" x2="12" y2="18"/>
+          </svg>
+          <span>客户端</span>
+        </li>
+        <li class="nav-item" data-page="deploy">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          <span>部署</span>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="connection-status" id="connectionStatus">
+          <div class="status-dot disconnected"></div>
+          <span>未连接</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="content">
+      <!-- 仪表盘页面 -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <h1>仪表盘</h1>
+          <button class="btn btn-sm btn-outline" id="btnRefresh">
+            <svg class="refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            <span class="btn-text">刷新</span>
+          </button>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- 连接状态卡片 -->
+          <div class="card card-status">
+            <div class="card-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                <line x1="12" y1="20" x2="12" y2="20"/>
+              </svg>
+            </div>
+            <div class="card-content">
+              <div class="card-label">连接状态</div>
+              <div class="card-value" id="dashConnectionState">未连接</div>
+            </div>
+          </div>
+
+          <!-- 当前模式卡片 -->
+          <div class="card card-mode">
+            <div class="card-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <div class="card-content">
+              <div class="card-label">当前模式</div>
+              <div class="card-value" id="dashCurrentMode">--</div>
+            </div>
+          </div>
+
+          <!-- 出口 IP 卡片 -->
+          <div class="card card-ip">
+            <div class="card-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+            </div>
+            <div class="card-content">
+              <div class="card-label">出口 IP</div>
+              <div class="card-value" id="dashExitIP">--</div>
+            </div>
+          </div>
+
+          <!-- 模式切换 -->
+          <div class="card card-switch">
+            <div class="card-title">模式切换</div>
+            <div class="mode-switch">
+              <button class="mode-btn active" id="btnModeIproyal" data-mode="iproyal">
+                <div class="mode-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>
+                </div>
+                <div class="mode-info">
+                  <div class="mode-name">IPRoyal</div>
+                  <div class="mode-desc">出口 194.50.146.79</div>
+                </div>
+              </button>
+              <button class="mode-btn" id="btnModeDirect" data-mode="direct">
+                <div class="mode-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                  </svg>
+                </div>
+                <div class="mode-info">
+                  <div class="mode-name">直连</div>
+                  <div class="mode-desc">VPS 直接出口</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- 快速操作 -->
+          <div class="card card-actions">
+            <div class="card-title">快速操作</div>
+            <div class="action-buttons">
+              <button class="btn btn-outline" id="btnVerifyIP">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                验证出口 IP
+              </button>
+              <button class="btn btn-outline" id="btnCheckXray">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                  <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                检查 Xray 状态
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 设置页面 -->
+      <div class="page" id="page-settings">
+        <div class="page-header">
+          <h1>设置</h1>
+        </div>
+
+        <div class="settings-section">
+          <h2>VPS 连接</h2>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>主机地址</label>
+              <input type="text" id="vpsHost" placeholder="例如: 123.45.67.89">
+            </div>
+            <div class="form-group">
+              <label>端口</label>
+              <input type="text" id="vpsPort" value="22" placeholder="22">
+            </div>
+            <div class="form-group">
+              <label>用户名</label>
+              <input type="text" id="vpsUsername" value="root" placeholder="root">
+            </div>
+            <div class="form-group">
+              <label>认证方式</label>
+              <select id="vpsAuthType">
+                <option value="password">密码</option>
+                <option value="key">SSH 密钥</option>
+              </select>
+            </div>
+            <div class="form-group" id="vpsPasswordGroup">
+              <label>密码</label>
+              <input type="password" id="vpsPassword" placeholder="输入密码">
+            </div>
+            <div class="form-group hidden" id="vpsKeyGroup">
+              <label>私钥路径</label>
+              <input type="text" id="vpsPrivateKey" placeholder="~/.ssh/id_rsa">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-outline" id="btnTestSSH">测试连接</button>
+            <button class="btn btn-primary" id="btnSaveVPS">保存</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2>IPRoyal 配置</h2>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>代理地址</label>
+              <input type="text" id="iproyalAddress" placeholder="例如: proxy.iproyal.com">
+            </div>
+            <div class="form-group">
+              <label>端口</label>
+              <input type="text" id="iproyalPort" placeholder="例如: 12324">
+            </div>
+            <div class="form-group">
+              <label>用户名</label>
+              <input type="text" id="iproyalUsername" placeholder="用户名">
+            </div>
+            <div class="form-group">
+              <label>密码</label>
+              <input type="password" id="iproyalPassword" placeholder="密码">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btnSaveIPRoyal">保存</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 客户端页面 -->
+      <div class="page" id="page-client">
+        <div class="page-header">
+          <h1>客户端配置</h1>
+        </div>
+
+        <div class="client-section">
+          <div class="client-info-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12" y2="8"/>
+            </svg>
+            <span>需要先完成部署才能生成客户端配置</span>
+          </div>
+
+          <div class="qr-section" id="qrSection" style="display: none;">
+            <h2>扫码导入</h2>
+            <div class="qr-container">
+              <canvas id="qrCanvas"></canvas>
+            </div>
+            <p class="qr-hint">使用客户端扫描二维码导入配置</p>
+          </div>
+
+          <div class="config-section" id="configSection" style="display: none;">
+            <h2>VLESS 链接</h2>
+            <div class="config-link-box">
+              <textarea id="vlessLink" readonly rows="3"></textarea>
+              <button class="btn btn-sm btn-outline" id="btnCopyLink">复制</button>
+            </div>
+
+            <div class="config-actions">
+              <button class="btn btn-sm btn-primary" id="btnCopyFullConfig">复制完整配置 (含 MUX 优化，可直接导入 v2rayN)</button>
+            </div>
+
+            <h2>手动配置参数</h2>
+            <div class="config-table">
+              <table>
+                <tbody id="configTableBody">
+                </tbody>
+              </table>
+            </div>
+
+            <h2>推荐客户端</h2>
+            <div class="client-apps">
+              <div class="client-app">
+                <div class="client-app-name">Windows</div>
+                <div class="client-app-list">V2rayN / Clash Verge Rev</div>
+              </div>
+              <div class="client-app">
+                <div class="client-app-name">macOS</div>
+                <div class="client-app-list">V2rayN / Clash Verge Rev</div>
+              </div>
+              <div class="client-app">
+                <div class="client-app-name">Android</div>
+                <div class="client-app-list">V2rayNG</div>
+              </div>
+              <div class="client-app">
+                <div class="client-app-name">iOS</div>
+                <div class="client-app-list">Shadowrocket ($2.99)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 部署页面 -->
+      <div class="page" id="page-deploy">
+        <div class="page-header">
+          <h1>一键部署</h1>
+        </div>
+
+        <div class="deploy-section">
+          <div class="deploy-info">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12" y2="8"/>
+            </svg>
+            <span>部署将在 VPS 上安装 Xray 并配置代理链路。请确保已填写 VPS 和 IPRoyal 配置。</span>
+          </div>
+
+          <div class="deploy-checklist">
+            <div class="check-item" id="checkVPS">
+              <div class="check-icon">○</div>
+              <span>VPS 连接配置</span>
+            </div>
+            <div class="check-item" id="checkIPRoyal">
+              <div class="check-icon">○</div>
+              <span>IPRoyal 代理配置</span>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-lg" id="btnDeploy" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            开始部署
+          </button>
+
+          <div class="deploy-log" id="deployLog" style="display: none;">
+            <h3>部署日志</h3>
+            <div class="log-content" id="logContent"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 通知 -->
+  <div class="notification" id="notification">
+    <div class="notification-content">
+      <span id="notificationText"></span>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
