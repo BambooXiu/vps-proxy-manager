@@ -67,6 +67,7 @@ function initComponents() {
   App.settings.init(config);
   App.client.init();
   App.deploy.init(config);
+  App.guide.init();
 }
 
 // ==================== UI Update ====================
