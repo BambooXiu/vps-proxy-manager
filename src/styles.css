@@ -791,6 +791,11 @@ body {
   background: var(--bg-surface);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.faq-item.open {
+  border-color: var(--accent);
 }
 
 .faq-question {
@@ -803,10 +808,12 @@ body {
   font-weight: 500;
   color: var(--text-primary);
   transition: background 0.15s ease;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .faq-question:hover {
-  background: var(--bg-hover);
+  background: rgba(137, 180, 250, 0.1);
 }
 
 .faq-arrow {

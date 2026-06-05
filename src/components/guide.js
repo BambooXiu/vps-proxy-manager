@@ -5,11 +5,14 @@ window.App = window.App || {};
 (function() {
   function init() {
     // FAQ 展开/收起
-    document.querySelectorAll('.faq-question').forEach(question => {
-      question.addEventListener('click', () => {
-        const item = question.parentElement;
-        item.classList.toggle('open');
-      });
+    const faqItems = document.querySelectorAll('.faq-item');
+    faqItems.forEach(item => {
+      const question = item.querySelector('.faq-question');
+      if (question) {
+        question.addEventListener('click', () => {
+          item.classList.toggle('open');
+        });
+      }
     });
   }
 
