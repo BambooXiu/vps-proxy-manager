@@ -791,7 +791,6 @@ body {
   background: var(--bg-surface);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  overflow: hidden;
 }
 
 .faq-question {
@@ -851,6 +850,22 @@ body {
   overflow-x: auto;
 }
 
+/* Footer */
+.footer-info {
+  text-align: center;
+  padding: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.footer-author {
+  font-weight: 500;
+}
+
+.footer-divider {
+  margin: 0 8px;
+}
+
 /* Disclaimer */
 .disclaimer {
   background: rgba(249, 226, 175, 0.1);
@@ -874,54 +889,6 @@ body {
   color: var(--text-secondary);
   margin-bottom: 10px;
   line-height: 1.6;
-}
-
-/* About */
-.about-author {
-  background: var(--bg-surface);
-  border-radius: var(--radius);
-  padding: 20px;
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.author-info {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.author-avatar {
-  width: 48px;
-  height: 48px;
-  background: rgba(137, 180, 250, 0.15);
-  color: var(--accent);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.author-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.author-desc {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-
-.app-version {
-  font-size: 12px;
-  color: var(--text-muted);
-  background: var(--bg-primary);
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
 }
 
 /* ==================== Scrollbar ==================== */
