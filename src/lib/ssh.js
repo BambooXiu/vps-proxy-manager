@@ -21,13 +21,19 @@ class SSHManager {
   async connect(config) {
     return new Promise((resolve) => {
       if (this.conn) {
-        this.conn.end();
+        const oldConn = this.conn;
+        this.conn = null;
+        this.connected = false;
+        oldConn.end();
       }
 
       this.config = config;
-      this.conn = new Client();
+      this.connected = false;
+      const conn = new Client();
+      this.conn = conn;
 
-      this.conn.on('ready', () => {
+      conn.on('ready', () => {
+        if (conn !== this.conn) return;
         this.connected = true;
         this.reconnectAttempts = 0;
         this.isReconnecting = false;
@@ -35,7 +41,8 @@ class SSHManager {
         resolve({ success: true });
       });
 
-      this.conn.on('error', (err) => {
+      conn.on('error', (err) => {
+        if (conn !== this.conn) return;
         this.connected = false;
         this.setStatus('error', err.message);
         if (!this.isReconnecting) {
@@ -43,7 +50,8 @@ class SSHManager {
         }
       });
 
-      this.conn.on('close', () => {
+      conn.on('close', () => {
+        if (conn !== this.conn) return;
         this.connected = false;
         if (!this.isReconnecting) {
           this.setStatus('disconnected', '连接断开');
@@ -68,7 +76,7 @@ class SSHManager {
         connConfig.password = config.password;
       }
 
-      this.conn.connect(connConfig);
+      conn.connect(connConfig);
     });
   }
 
@@ -146,9 +154,10 @@ class SSHManager {
     this.isReconnecting = false;
     this.reconnectAttempts = 0;
     if (this.conn) {
-      this.conn.end();
+      const conn = this.conn;
       this.conn = null;
       this.connected = false;
+      conn.end();
       this.setStatus('disconnected', '已断开');
     }
   }

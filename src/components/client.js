@@ -51,7 +51,7 @@ window.App = window.App || {};
           <tr><td>PublicKey</td><td>${m.publicKey}</td></tr>
           <tr><td>ShortId</td><td>${m.shortId}</td></tr>
           <tr><td>Fingerprint</td><td>${m.fingerprint}</td></tr>
-          <tr><td>MUX</td><td>开启 (并发 ${m.mux.concurrency}, XUDP ${m.mux.xudpConcurrency})</td></tr>
+          <tr><td>MUX</td><td>${m.mux.enabled ? '开启' : (m.mux.note || '关闭')}</td></tr>
           <tr><td>TCP FastOpen</td><td>开启</td></tr>
           <tr><td>KeepAlive</td><td>30s</td></tr>
         `;

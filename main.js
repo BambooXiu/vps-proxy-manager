@@ -3,6 +3,11 @@ const path = require('path');
 const QRCode = require('qrcode');
 const { SSHManager } = require('./src/lib/ssh');
 const { ConfigManager } = require('./src/lib/config');
+const {
+  createServerConfig,
+  generateClientConfig,
+  generateOptimizeScript,
+} = require('./src/lib/xray-config');
 
 let mainWindow;
 const sshManager = new SSHManager();
@@ -162,74 +167,22 @@ ipcMain.handle('deploy:run', wrapHandler(async (event, config) => {
     const uuidStr = (uuid.data || '').trim();
     const shortIdStr = (shortId.data || '').trim();
 
-    const iproyalConfig = JSON.stringify({
-      log: { loglevel: 'warning', access: '/var/log/xray/access.log', error: '/var/log/xray/error.log' },
-      dns: { servers: [{ address: 'https://8.8.8.8/dns-query', outboundTag: 'proxy' }, { address: 'https://1.1.1.1/dns-query', outboundTag: 'proxy' }] },
-      inbounds: [{
-        tag: 'vless-in', listen: '0.0.0.0', port: 443, protocol: 'vless',
-        settings: { clients: [{ id: uuidStr, flow: 'xtls-rprx-vision' }], decryption: 'none' },
-        streamSettings: {
-          network: 'tcp', security: 'reality',
-          realitySettings: { dest: 'www.microsoft.com:443', serverNames: ['www.microsoft.com', 'microsoft.com'], privateKey: privateKey, shortIds: [shortIdStr] },
-          sockopt: { tcpFastOpen: true, mark: 0, tcpKeepAliveInterval: 30 }
-        },
-        sniffing: { enabled: true, destOverride: ['http', 'tls', 'quic'] }
-      }],
-      outbounds: [
-        { tag: 'proxy', protocol: 'socks', settings: { servers: [{ address: iproyal.address, port: parseInt(iproyal.port), users: [{ user: iproyal.username, pass: iproyal.password }] }] } },
-        { tag: 'block', protocol: 'blackhole' },
-        { tag: 'direct', protocol: 'freedom' }
-      ],
-      policy: {
-        levels: {
-          '0': { handshake: 4, connIdle: 300, uplinkOnly: 2, downlinkOnly: 5, bufferSize: 512 }
-        },
-        system: { statsInboundUplink: false, statsInboundDownlink: false }
-      },
-      observatory: {
-        probeInterval: '3m',
-        probeURL: 'https://www.google.com/generate_204',
-        subjectSelector: ['proxy'],
-        enableConcurrency: true
-      },
-      routing: { domainStrategy: 'AsIs', rules: [
-        { type: 'field', ip: ['geoip:private'], outboundTag: 'direct' },
-        { type: 'field', protocol: ['bittorrent'], outboundTag: 'block' },
-        { type: 'field', inboundTag: ['vless-in'], outboundTag: 'proxy' }
-      ]}
-    }, null, 2);
+    const iproyalConfig = JSON.stringify(createServerConfig({
+      mode: 'iproyal',
+      uuid: uuidStr,
+      privateKey,
+      shortId: shortIdStr,
+      iproyal,
+    }), null, 2);
 
     // Step 6: 生成直连模式配置
-    const directConfig = JSON.stringify({
-      log: { loglevel: 'warning', access: '/var/log/xray/access.log', error: '/var/log/xray/error.log' },
-      dns: { servers: [{ address: 'https://8.8.8.8/dns-query', outboundTag: 'proxy' }, { address: 'https://1.1.1.1/dns-query', outboundTag: 'proxy' }] },
-      inbounds: [{
-        tag: 'vless-in', listen: '0.0.0.0', port: 443, protocol: 'vless',
-        settings: { clients: [{ id: uuidStr, flow: 'xtls-rprx-vision' }], decryption: 'none' },
-        streamSettings: {
-          network: 'tcp', security: 'reality',
-          realitySettings: { dest: 'www.microsoft.com:443', serverNames: ['www.microsoft.com', 'microsoft.com'], privateKey: privateKey, shortIds: [shortIdStr] },
-          sockopt: { tcpFastOpen: true, mark: 0, tcpKeepAliveInterval: 30 }
-        },
-        sniffing: { enabled: true, destOverride: ['http', 'tls', 'quic'] }
-      }],
-      outbounds: [
-        { tag: 'proxy', protocol: 'freedom' },
-        { tag: 'block', protocol: 'blackhole' },
-        { tag: 'direct', protocol: 'freedom' }
-      ],
-      policy: {
-        levels: {
-          '0': { handshake: 4, connIdle: 300, uplinkOnly: 2, downlinkOnly: 5, bufferSize: 512 }
-        },
-        system: { statsInboundUplink: false, statsInboundDownlink: false }
-      },
-      routing: { domainStrategy: 'AsIs', rules: [
-        { type: 'field', ip: ['geoip:private'], outboundTag: 'direct' },
-        { type: 'field', protocol: ['bittorrent'], outboundTag: 'block' },
-        { type: 'field', inboundTag: ['vless-in'], outboundTag: 'proxy' }
-      ]}
-    }, null, 2);
+    const directConfig = JSON.stringify(createServerConfig({
+      mode: 'direct',
+      uuid: uuidStr,
+      privateKey,
+      shortId: shortIdStr,
+      iproyal,
+    }), null, 2);
 
     // 写入配置文件（用 heredoc 避免引号问题）
     await runStep('写入 IPRoyal 配置', `cat > /usr/local/etc/xray/modes/iproyal.json << 'XRAYEOF'\n${iproyalConfig}\nXRAYEOF`);
@@ -274,78 +227,7 @@ esac`;
 
 // 客户端配置生成
 ipcMain.handle('client:generate-config', wrapHandler(async (event, params) => {
-  const { vpsIP, uuid, publicKey, shortId } = params;
-  const vlessLink = `vless://${uuid}@${vpsIP}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.microsoft.com&fp=chrome&pbk=${publicKey}&sid=${shortId}&type=tcp#VPS-Proxy`;
-
-  // 生成 v2rayN 完整配置（含 MUX 优化，可直接导入）
-  const fullConfig = JSON.stringify({
-    log: { loglevel: 'warning' },
-    dns: {
-      servers: [
-        { address: 'https://8.8.8.8/dns-query', domains: ['geosite:geolocation-!cn'] },
-        { address: 'https://223.5.5.5/dns-query', domains: ['geosite:cn'] }
-      ]
-    },
-    inbounds: [
-      { tag: 'socks', port: 10808, listen: '127.0.0.1', protocol: 'socks',
-        sniffing: { enabled: true, destOverride: ['http', 'tls'] },
-        settings: { auth: 'noauth', udp: true } },
-      { tag: 'http', port: 10809, listen: '127.0.0.1', protocol: 'http',
-        sniffing: { enabled: true, destOverride: ['http', 'tls'] },
-        settings: { auth: 'noauth', udp: true } }
-    ],
-    outbounds: [
-      {
-        tag: 'proxy', protocol: 'vless',
-        settings: { vnext: [{ address: vpsIP, port: 443, users: [
-          { id: uuid, alterId: 0, email: 't@t.tt', security: 'auto', encryption: 'none', flow: 'xtls-rprx-vision' }
-        ]}]},
-        streamSettings: {
-          network: 'tcp', security: 'reality',
-          realitySettings: { show: false, fingerprint: 'chrome', serverName: 'www.microsoft.com', publicKey, shortId, spiderX: '' },
-          sockopt: { tcpFastOpen: true, tcpKeepAliveInterval: 30 }
-        },
-        mux: { enabled: true, concurrency: 8, xudpConcurrency: 16, xudpProxyUDP443: 'reject' }
-      },
-      { tag: 'direct', protocol: 'freedom', settings: {} },
-      { tag: 'block', protocol: 'blackhole', settings: {} }
-    ],
-    routing: {
-      domainStrategy: 'AsIs',
-      rules: [
-        { type: 'field', inboundTag: ['api'], outboundTag: 'api' },
-        { type: 'field', outboundTag: 'direct', domain: ['domain:alidns.com', 'domain:doh.pub', 'domain:dot.pub', 'domain:360.cn', 'domain:onedns.net'] },
-        { type: 'field', outboundTag: 'direct', ip: ['223.5.5.5', '223.6.6.6', '2400:3200::1', '2400:3200:baba::1', '119.29.29.29', '1.12.12.12', '120.53.53.53', '2402:4e00::', '2402:4e00:1::', '180.76.76.76', '2400:da00::6666', '114.114.114.114', '114.114.115.115', '114.114.114.119', '114.114.115.119', '114.114.114.110', '114.114.115.110', '180.184.1.1', '180.184.2.2', '101.226.4.6', '218.30.118.6', '123.125.81.6', '140.207.198.6', '1.2.4.8', '210.2.4.8', '52.80.66.66', '117.50.22.22', '2400:7fc0:849e:200::4', '2404:c2c0:85d8:901::4', '117.50.10.10', '52.80.52.52', '2400:7fc0:849e:200::8', '2404:c2c0:85d8:901::8', '117.50.60.30', '52.80.60.30'] },
-        { type: 'field', outboundTag: 'direct', ip: ['geoip:cn'] },
-        { type: 'field', outboundTag: 'direct', domain: ['geosite:cn'] },
-        { type: 'field', port: '443', network: 'udp', outboundTag: 'block' },
-        { type: 'field', outboundTag: 'proxy', domain: ['geosite:geolocation-!cn'] }
-      ]
-    }
-  }, null, 2);
-
-  return {
-    vlessLink,
-    fullConfig,
-    manual: {
-      address: vpsIP,
-      port: 443,
-      protocol: 'VLESS',
-      uuid,
-      flow: 'xtls-rprx-vision',
-      transport: 'tcp',
-      security: 'reality',
-      sni: 'www.microsoft.com',
-      publicKey,
-      shortId,
-      fingerprint: 'chrome',
-      mux: { enabled: true, concurrency: 8, xudpConcurrency: 16, xudpProxyUDP443: 'reject' },
-      optimizations: {
-        tcpFastOpen: true,
-        sockopt: { tcpKeepAliveInterval: 30 },
-      },
-    },
-  };
+  return generateClientConfig(params);
 }));
 
 // 一键优化（BBR + Xray 配置热更新）
@@ -368,47 +250,8 @@ ipcMain.handle('ssh:optimize', wrapHandler(async (event, vpsConfig) => {
     // Step 2: 验证 BBR
     const bbrResult = await runStep('验证 BBR', 'sysctl net.ipv4.tcp_congestion_control');
 
-    // Step 3: 读取当前配置并添加优化字段
-    const optimizeScript = `
-      CONFIG="/usr/local/etc/xray/config.json"
-      MODES_DIR="/usr/local/etc/xray/modes"
-      python3 -c "
-import json, sys
-
-def optimize(path):
-    with open(path) as f:
-        cfg = json.load(f)
-    # 为 inbound streamSettings 添加 sockopt
-    for inbound in cfg.get('inbounds', []):
-        ss = inbound.get('streamSettings', {})
-        ss['sockopt'] = {'tcpFastOpen': True, 'mark': 0, 'tcpKeepAliveInterval': 30}
-        inbound['streamSettings'] = ss
-    # 添加 policy
-    cfg['policy'] = {
-        'levels': {'0': {'handshake': 4, 'connIdle': 300, 'uplinkOnly': 2, 'downlinkOnly': 5, 'bufferSize': 512}},
-        'system': {'statsInboundUplink': False, 'statsInboundDownlink': False}
-    }
-    # 添加 observatory（如果有 socks/http 出站）
-    has_proxy = any(o.get('tag') == 'proxy' and o.get('protocol') in ('socks','http','vmess','vless','trojan','shadowsocks') for o in cfg.get('outbounds', []))
-    if has_proxy:
-        cfg['observatory'] = {
-            'probeInterval': '3m',
-            'probeURL': 'https://www.google.com/generate_204',
-            'subjectSelector': ['proxy'],
-            'enableConcurrency': True
-        }
-    with open(path, 'w') as f:
-        json.dump(cfg, f, indent=2)
-    print(f'optimized: {path}')
-
-optimize('$CONFIG')
-import os
-modes = os.path.join('$MODES_DIR')
-if os.path.isdir(modes):
-    for f in os.listdir(modes):
-        if f.endswith('.json'):
-            optimize(os.path.join(modes, f))
-" 2>&1`;
+    // Step 3: 读取当前配置并应用长连接优化字段
+    const optimizeScript = generateOptimizeScript();
 
     await runStep('优化 Xray 配置', optimizeScript);
 
