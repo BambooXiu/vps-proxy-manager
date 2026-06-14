@@ -7,7 +7,8 @@
     "start": "electron .",
     "test": "node scripts/test-config-generation.js",
     "build": "electron-builder --mac",
-    "build:dmg": "electron-builder --mac dmg"
+    "build:dmg": "electron-builder --mac dmg",
+    "build:win": "electron-builder --win"
   },
   "author": "Yue",
   "license": "MIT",
@@ -30,6 +31,24 @@
           "arch": ["arm64", "x64"]
         }
       ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "之竹Proxy",
+      "runAfterFinish": true
     },
     "dmg": {
       "title": "之竹Proxy",

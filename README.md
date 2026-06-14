@@ -1,6 +1,6 @@
 # VPS Proxy Manager
 
-macOS 桌面应用，用于管理 VPS 代理模式切换。
+跨平台桌面应用（macOS / Windows），用于管理 VPS 代理模式切换。
 
 ## 功能
 
@@ -19,13 +19,21 @@ npm install
 npm start
 ```
 
-### 构建 DMG
+### 构建 DMG (macOS)
 
 ```bash
 npm run build:dmg
 ```
 
 构建完成后，DMG 文件在 `dist/` 目录中。
+
+### 构建 EXE (Windows)
+
+```bash
+npm run build:win
+```
+
+构建完成后，安装程序 `之竹Proxy Setup 1.0.0.exe` 在 `dist/` 目录中。
 
 ## 使用说明
 
@@ -71,6 +79,9 @@ vps-proxy-manager/
 │   └── lib/
 │       ├── ssh.js       # SSH 连接管理
 │       └── config.js    # 配置管理
-├── assets/              # 资源文件
+├── assets/
+│   ├── icon.png         # 应用图标 (PNG)
+│   ├── icon.svg         # 应用图标 (SVG)
+│   └── icon.ico         # 应用图标 (Windows)
 └── package.json         # 项目配置
 ```
