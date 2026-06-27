@@ -62,8 +62,30 @@ function testOptimizeScriptUsesPythonJsonParsing() {
   assert.doesNotMatch(script, /POLICY = \\{[^\\n]*false/);
 }
 
+function testRealitySniChanged() {
+  const iproyalConfig = createServerConfig({
+    mode: 'iproyal',
+    uuid: sample.uuid,
+    privateKey: sample.privateKey,
+    shortId: sample.shortId,
+    iproyal: sample.iproyal,
+  });
+
+  const reality = iproyalConfig.inbounds[0].streamSettings.realitySettings;
+  assert.strictEqual(reality.dest, 'www.apple.com:443');
+  assert.deepStrictEqual(reality.serverNames, ['www.apple.com', 'apple.com']);
+
+  const generated = generateClientConfig(sample);
+  const fullConfig = JSON.parse(generated.fullConfig);
+  const proxy = getProxyOutbound(fullConfig);
+  assert.strictEqual(proxy.streamSettings.realitySettings.serverName, 'www.apple.com');
+  assert.match(generated.vlessLink, /sni=www\.apple\.com/);
+  assert.strictEqual(generated.manual.sni, 'www.apple.com');
+}
+
 testClientMuxDisabled();
 testServerPolicyForLongLivedConnections();
 testOptimizeScriptUsesPythonJsonParsing();
+testRealitySniChanged();
 
 console.log('config generation tests passed');

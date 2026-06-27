@@ -1,3 +1,5 @@
+const REALITY_SNI = 'www.apple.com';
+
 const RECOMMENDED_POLICY = {
   handshake: 12,
   connIdle: 900,
@@ -29,8 +31,8 @@ function createInbound({ uuid, privateKey, shortId }) {
       network: 'tcp',
       security: 'reality',
       realitySettings: {
-        dest: 'www.microsoft.com:443',
-        serverNames: ['www.microsoft.com', 'microsoft.com'],
+        dest: `${REALITY_SNI}:443`,
+        serverNames: [REALITY_SNI, REALITY_SNI.replace('www.', '')],
         privateKey,
         shortIds: [shortId],
       },
@@ -98,7 +100,7 @@ function createServerConfig({ mode, uuid, privateKey, shortId, iproyal }) {
 }
 
 function generateClientConfig({ vpsIP, uuid, publicKey, shortId }) {
-  const vlessLink = `vless://${uuid}@${vpsIP}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.microsoft.com&fp=chrome&pbk=${publicKey}&sid=${shortId}&type=tcp#VPS-Proxy-NoMUX`;
+  const vlessLink = `vless://${uuid}@${vpsIP}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_SNI}&fp=chrome&pbk=${publicKey}&sid=${shortId}&type=tcp#VPS-Proxy-NoMUX`;
 
   const fullConfig = JSON.stringify({
     log: { loglevel: 'warning' },
@@ -150,7 +152,7 @@ function generateClientConfig({ vpsIP, uuid, publicKey, shortId }) {
           realitySettings: {
             show: false,
             fingerprint: 'chrome',
-            serverName: 'www.microsoft.com',
+            serverName: REALITY_SNI,
             publicKey,
             shortId,
             spiderX: '',
@@ -188,7 +190,7 @@ function generateClientConfig({ vpsIP, uuid, publicKey, shortId }) {
       flow: 'xtls-rprx-vision',
       transport: 'tcp',
       security: 'reality',
-      sni: 'www.microsoft.com',
+      sni: REALITY_SNI,
       publicKey,
       shortId,
       fingerprint: 'chrome',
@@ -207,6 +209,7 @@ function generateClientConfig({ vpsIP, uuid, publicKey, shortId }) {
 function generateOptimizeScript() {
   const policy = JSON.stringify(JSON.stringify(RECOMMENDED_POLICY));
   const openaiDomains = JSON.stringify(JSON.stringify(OPENAI_PROXY_DOMAINS));
+  const realitySni = JSON.stringify(REALITY_SNI);
 
   return `
 python3 - <<'PY'
@@ -217,6 +220,7 @@ CONFIG = '/usr/local/etc/xray/config.json'
 MODES_DIR = '/usr/local/etc/xray/modes'
 POLICY = json.loads(${policy})
 OPENAI_PROXY_DOMAINS = json.loads(${openaiDomains})
+REALITY_SNI = json.loads(${realitySni})
 
 def ensure_rule(rules, rule):
     for existing in rules:
@@ -238,6 +242,10 @@ def optimize(path):
             'tcpKeepAliveInterval': 30,
         }
         inbound['sniffing'] = {'enabled': True, 'destOverride': ['http', 'tls']}
+        reality = stream_settings.get('realitySettings')
+        if reality:
+            reality['dest'] = REALITY_SNI + ':443'
+            reality['serverNames'] = [REALITY_SNI, REALITY_SNI.replace('www.', '')]
 
     cfg['policy'] = {
         'levels': {'0': POLICY},
