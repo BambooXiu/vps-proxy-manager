@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# VPS Proxy Manager - Build Script
+# NovaBit Proxy - Build Script
 # Usage: ./build.sh [dev|build|dmg]
 
 set -e

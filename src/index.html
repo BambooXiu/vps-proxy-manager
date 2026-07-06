@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;">
-  <title>VPS Proxy Manager</title>
+  <title>NovaBit Proxy</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -22,7 +22,7 @@
             <path d="M2 12l10 5 10-5"/>
           </svg>
         </div>
-        <span class="app-title">VPS Proxy</span>
+        <span class="app-title">NovaBit Proxy</span>
       </div>
 
       <ul class="nav-list">
@@ -144,8 +144,8 @@
                   </svg>
                 </div>
                 <div class="mode-info">
-                  <div class="mode-name">IPRoyal</div>
-                  <div class="mode-desc">出口 194.50.146.79</div>
+                  <div class="mode-name">ISP 代理</div>
+                  <div class="mode-desc">出口以当前配置为准</div>
                 </div>
               </button>
               <button class="mode-btn" id="btnModeDirect" data-mode="direct">
@@ -230,11 +230,11 @@
         </div>
 
         <div class="settings-section">
-          <h2>IPRoyal 配置</h2>
+          <h2>ISP 代理配置</h2>
           <div class="form-grid">
             <div class="form-group">
               <label>代理地址</label>
-              <input type="text" id="iproyalAddress" placeholder="例如: proxy.iproyal.com">
+              <input type="text" id="iproyalAddress" placeholder="例如: 198.51.100.10">
             </div>
             <div class="form-group">
               <label>端口</label>
@@ -276,7 +276,7 @@
             <div class="qr-container">
               <canvas id="qrCanvas"></canvas>
             </div>
-            <p class="qr-hint">使用客户端扫描二维码导入配置</p>
+            <p class="qr-hint">使用客户端扫描二维码导入节点参数</p>
           </div>
 
           <div class="config-section" id="configSection" style="display: none;">
@@ -285,9 +285,11 @@
               <textarea id="vlessLink" readonly rows="3"></textarea>
               <button class="btn btn-sm btn-outline" id="btnCopyLink">复制</button>
             </div>
+            <p class="config-hint" id="clientImportHint">二维码/VLESS 链接只包含节点参数；微信直连和 DNS 优化仅在复制完整配置并导入 v2rayN/v2rayNG 等支持完整 JSON 的客户端后生效。</p>
 
             <div class="config-actions">
-              <button class="btn btn-sm btn-primary" id="btnCopyFullConfig">复制完整配置 (MUX 关闭，适合长连接)</button>
+              <button class="btn btn-sm btn-success" id="btnRegenerateConfig">重新生成配置</button>
+              <button class="btn btn-sm btn-primary" id="btnCopyFullConfig">复制完整配置（含微信直连优化）</button>
             </div>
 
             <h2>手动配置参数</h2>
@@ -334,7 +336,7 @@
               <line x1="12" y1="16" x2="12" y2="12"/>
               <line x1="12" y1="8" x2="12" y2="8"/>
             </svg>
-            <span>部署将在 VPS 上安装 Xray 并配置代理链路。请确保已填写 VPS 和 IPRoyal 配置。</span>
+            <span>部署将在 VPS 上安装 Xray 并配置代理链路。请确保已填写 VPS 和 ISP 代理配置。</span>
           </div>
 
           <div class="deploy-checklist">
@@ -344,7 +346,7 @@
             </div>
             <div class="check-item" id="checkIPRoyal">
               <div class="check-icon">○</div>
-              <span>IPRoyal 代理配置</span>
+              <span>ISP 代理配置</span>
             </div>
           </div>
 
@@ -392,14 +394,14 @@
               <div class="guide-step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                  <h3>配置 IPRoyal 代理</h3>
-                  <p>在设置页面下方填入 IPRoyal 代理信息：</p>
+                  <h3>配置 ISP 代理</h3>
+                  <p>在设置页面下方填入你购买的 ISP 代理信息：</p>
                   <ul>
-                    <li>代理地址（如 proxy.iproyal.com）</li>
+                    <li>代理地址（如 198.51.100.10）</li>
                     <li>端口号</li>
                     <li>用户名和密码</li>
                   </ul>
-                  <p class="tip">IPRoyal 账号可在 <a href="#" onclick="window.api.system.openUrl('https://iproyal.com'); return false;">iproyal.com</a> 注册获取</p>
+                  <p class="tip">请以代理服务商后台提供的地址、端口、用户名和密码为准</p>
                 </div>
               </div>
 
@@ -412,7 +414,7 @@
                   <ul>
                     <li>安装 Xray-core</li>
                     <li>生成 VLESS + Reality 配置</li>
-                    <li>配置 IPRoyal 和直连两种模式</li>
+                    <li>配置 ISP 代理和直连两种模式</li>
                     <li>启用 BBR 拥塞控制优化</li>
                     <li>配置防火墙规则</li>
                   </ul>
@@ -426,10 +428,20 @@
                   <h3>获取客户端配置</h3>
                   <p>部署完成后，进入<strong>客户端</strong>页面：</p>
                   <ul>
-                    <li>扫描二维码导入配置（推荐）</li>
-                    <li>复制 VLESS 链接导入</li>
-                    <li>复制完整 JSON 配置导入 v2rayN</li>
+                    <li>扫描二维码或复制 VLESS 链接只会导入节点参数，适合普通连接测试</li>
+                    <li><strong>重新生成配置</strong>：部署信息变更、重新部署或需要刷新微信直连和 DNS 优化时使用，会根据当前 VPS 参数重新生成 VLESS 链接和完整 JSON</li>
+                    <li><strong>复制完整配置</strong>：复制包含微信直连、国内直连、DNS 分流和 MUX 关闭设置的完整 JSON，推荐用于 v2rayN/v2rayNG 系列客户端</li>
                   </ul>
+                  <p>完整 JSON 导入步骤：</p>
+                  <ol>
+                    <li>在<strong>客户端</strong>页面点击<strong>重新生成配置</strong>，确认没有报错。</li>
+                    <li>点击<strong>复制完整配置（含微信直连优化）</strong>。</li>
+                    <li>新建一个文本文件，粘贴刚复制的内容，保存为 <code>novabit-proxy.json</code>；如果系统先保存成 <code>.txt</code>，请把后缀改为 <code>.json</code>。</li>
+                    <li>电脑使用：在 v2rayN 桌面端选择本地导入/从文件导入配置，选择刚保存的 <code>novabit-proxy.json</code>。</li>
+                    <li>手机使用：把 <code>novabit-proxy.json</code> 通过 AirDrop、数据线、网盘或聊天工具发送到手机，在 v2rayNG 中选择本地导入/从文件导入并选中该 JSON。</li>
+                    <li>导入后启用新配置；如果列表里有旧配置，优先选择名称最新或重新导入的完整配置。</li>
+                  </ol>
+                  <p class="tip">微信直连和 DNS 优化只存在于完整 JSON 中，单独扫描二维码或导入 VLESS 链接不会带上这些规则。</p>
                 </div>
               </div>
 
@@ -439,7 +451,7 @@
                   <h3>模式切换</h3>
                   <p>在<strong>仪表盘</strong>页面可以随时切换代理模式：</p>
                   <ul>
-                    <li><strong>IPRoyal 模式</strong>：流量通过 IPRoyal 代理出口，IP 显示为 194.50.146.79</li>
+                    <li><strong>ISP 代理模式</strong>：流量通过已配置的 ISP 代理出口，IP 显示为代理服务商出口</li>
                     <li><strong>直连模式</strong>：流量直接从 VPS 出口，IP 显示为 VPS 地址</li>
                   </ul>
                 </div>
@@ -456,11 +468,11 @@
         │
         │ VLESS + Reality (加密传输)
         ▼
-RackNerd VPS 运行 Xray-core
+VPS 服务器运行 Xray-core
         │
         │ SOCKS5 代理
         ▼
-IPRoyal 代理服务器 (194.50.146.79)
+ISP 代理服务器（以当前配置为准）
         │
         ▼
 目标网站</pre>
@@ -524,14 +536,33 @@ IPRoyal 代理服务器 (194.50.146.79)
 
               <div class="faq-item">
                 <div class="faq-question">
-                  <span>IPRoyal 和直连模式有什么区别？</span>
+                  <span>微信或国内访问慢怎么办？</span>
+                  <svg class="faq-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+                <div class="faq-answer">
+                  <p>通常是客户端只导入了节点参数，微信直连和 DNS 优化没有生效。解决步骤：</p>
+                  <ul>
+                    <li>不要只扫描二维码或导入 VLESS 链接；这两种方式只包含节点参数，不包含国内直连和 DNS 分流规则。</li>
+                    <li>进入<strong>客户端</strong>页面，先点击<strong>重新生成配置</strong>，再点击<strong>复制完整配置</strong>。</li>
+                    <li>把复制的内容保存为 <code>novabit-proxy.json</code>，在 v2rayN/v2rayNG 中选择本地导入/从文件导入该完整 JSON。</li>
+                    <li>导入后启用新配置，确认正在使用完整 JSON 配置，而不是旧的二维码或 VLESS 链接配置。</li>
+                    <li>完整 JSON 内置微信直连和 DNS 优化，微信、腾讯和国内访问会优先直连，国外及 OpenAI 相关流量仍按代理规则处理。</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <div class="faq-question">
+                  <span>ISP 代理和直连模式有什么区别？</span>
                   <svg class="faq-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="6 9 12 15 18 9"/>
                   </svg>
                 </div>
                 <div class="faq-answer">
                   <ul>
-                    <li><strong>IPRoyal 模式</strong>：出口 IP 为 194.50.146.79（美国 Delaware），适合需要特定地区 IP 的场景</li>
+                    <li><strong>ISP 代理模式</strong>：出口 IP 为当前配置的代理服务商出口，适合需要特定地区 IP 的场景</li>
                     <li><strong>直连模式</strong>：出口 IP 为 VPS 本身的 IP，速度更快，适合普通访问</li>
                   </ul>
                 </div>
@@ -557,9 +588,9 @@ IPRoyal 代理服务器 (194.50.146.79)
           <!-- 作者信息 -->
           <div class="guide-section">
             <div class="footer-info">
-              <span class="footer-author">修之竹</span>
+              <span class="footer-author">NovaBit</span>
               <span class="footer-divider">·</span>
-              <span class="footer-version">之竹Proxy v1.0.0</span>
+              <span class="footer-version">NovaBit Proxy v1.2.3</span>
             </div>
           </div>
         </div>

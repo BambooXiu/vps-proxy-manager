@@ -17,6 +17,76 @@ const OPENAI_PROXY_DOMAINS = [
   'domain:oaiusercontent.com',
 ];
 
+// 微信相关域名直连 - 解决微信访问慢问题
+const WECHAT_DIRECT_DOMAINS = [
+  'domain:weixin.qq.com',
+  'domain:wechat.com',
+  'domain:qq.com',
+  'domain:tencent.com',
+  'domain:tencent-cloud.net',
+  'domain:gtimg.cn',
+  'domain:gtimg.com',
+  'domain:qpic.cn',
+  'domain:qlogo.cn',
+  'domain:myqcloud.com',
+  'domain:tencent-wechat.com',
+  'domain:weixinbridge.com',
+  'geosite:cn',
+];
+
+const WECHAT_DIRECT_IPS = [
+  'geoip:private',
+  'geoip:cn',
+];
+
+const DOMESTIC_DNS_DIRECT_DOMAINS = [
+  'domain:alidns.com',
+  'domain:doh.pub',
+  'domain:dot.pub',
+  'domain:360.cn',
+  'domain:onedns.net',
+];
+
+const DOMESTIC_DNS_DIRECT_IPS = [
+  '223.5.5.5',
+  '223.6.6.6',
+  '2400:3200::1',
+  '2400:3200:baba::1',
+  '119.29.29.29',
+  '1.12.12.12',
+  '120.53.53.53',
+  '2402:4e00::',
+  '2402:4e00:1::',
+  '180.76.76.76',
+  '2400:da00::6666',
+  '114.114.114.114',
+  '114.114.115.115',
+  '114.114.114.119',
+  '114.114.115.119',
+  '114.114.114.110',
+  '114.114.115.110',
+  '180.184.1.1',
+  '180.184.2.2',
+  '101.226.4.6',
+  '218.30.118.6',
+  '123.125.81.6',
+  '140.207.198.6',
+  '1.2.4.8',
+  '210.2.4.8',
+  '52.80.66.66',
+  '117.50.22.22',
+  '2400:7fc0:849e:200::4',
+  '2404:c2c0:85d8:901::4',
+  '117.50.10.10',
+  '52.80.52.52',
+  '2400:7fc0:849e:200::8',
+  '2404:c2c0:85d8:901::8',
+  '117.50.60.30',
+  '52.80.60.30',
+];
+
+const CLIENT_IMPORT_NOTE = '二维码/VLESS 链接只包含节点参数；微信直连和 DNS 优化仅在复制完整配置并导入 v2rayN/v2rayNG 等支持完整 JSON 的客户端后生效。';
+
 function createInbound({ uuid, privateKey, shortId }) {
   return {
     tag: 'vless-in',
@@ -105,9 +175,12 @@ function generateClientConfig({ vpsIP, uuid, publicKey, shortId }) {
   const fullConfig = JSON.stringify({
     log: { loglevel: 'warning' },
     dns: {
+      queryStrategy: 'UseIPv4',
       servers: [
-        { address: 'https://8.8.8.8/dns-query', domains: ['geosite:geolocation-!cn'] },
-        { address: 'https://223.5.5.5/dns-query', domains: ['geosite:cn'] },
+        { address: '223.5.5.5', port: 53, domains: WECHAT_DIRECT_DOMAINS, outboundTag: 'direct' },
+        { address: '119.29.29.29', port: 53, domains: WECHAT_DIRECT_DOMAINS, outboundTag: 'direct' },
+        { address: '8.8.8.8', port: 53, domains: ['geosite:geolocation-!cn'], outboundTag: 'proxy' },
+        { address: '1.1.1.1', port: 53, domains: ['geosite:geolocation-!cn'], outboundTag: 'proxy' },
       ],
     },
     inbounds: [
@@ -116,7 +189,7 @@ function generateClientConfig({ vpsIP, uuid, publicKey, shortId }) {
         port: 10808,
         listen: '127.0.0.1',
         protocol: 'socks',
-        sniffing: { enabled: true, destOverride: ['http', 'tls'] },
+        sniffing: { enabled: true, destOverride: ['http', 'tls', 'quic'] },
         settings: { auth: 'noauth', udp: true },
       },
       {
@@ -124,7 +197,7 @@ function generateClientConfig({ vpsIP, uuid, publicKey, shortId }) {
         port: 10809,
         listen: '127.0.0.1',
         protocol: 'http',
-        sniffing: { enabled: true, destOverride: ['http', 'tls'] },
+        sniffing: { enabled: true, destOverride: ['http', 'tls', 'quic'] },
         settings: { auth: 'noauth', udp: true },
       },
     ],
@@ -163,15 +236,18 @@ function generateClientConfig({ vpsIP, uuid, publicKey, shortId }) {
       },
       { tag: 'direct', protocol: 'freedom', settings: {} },
       { tag: 'block', protocol: 'blackhole', settings: {} },
+      { tag: 'dns-out', protocol: 'dns' },
     ],
     routing: {
-      domainStrategy: 'AsIs',
+      domainStrategy: 'IPIfNonMatch',
+      domainMatcher: 'mph',
       rules: [
+        { type: 'field', port: '53', outboundTag: 'dns-out' },
+        { type: 'field', outboundTag: 'direct', domain: WECHAT_DIRECT_DOMAINS },
+        { type: 'field', outboundTag: 'direct', ip: WECHAT_DIRECT_IPS },
         { type: 'field', inboundTag: ['api'], outboundTag: 'api' },
-        { type: 'field', outboundTag: 'direct', domain: ['domain:alidns.com', 'domain:doh.pub', 'domain:dot.pub', 'domain:360.cn', 'domain:onedns.net'] },
-        { type: 'field', outboundTag: 'direct', ip: ['223.5.5.5', '223.6.6.6', '2400:3200::1', '2400:3200:baba::1', '119.29.29.29', '1.12.12.12', '120.53.53.53', '2402:4e00::', '2402:4e00:1::', '180.76.76.76', '2400:da00::6666', '114.114.114.114', '114.114.115.115', '114.114.114.119', '114.114.115.119', '114.114.114.110', '114.114.115.110', '180.184.1.1', '180.184.2.2', '101.226.4.6', '218.30.118.6', '123.125.81.6', '140.207.198.6', '1.2.4.8', '210.2.4.8', '52.80.66.66', '117.50.22.22', '2400:7fc0:849e:200::4', '2404:c2c0:85d8:901::4', '117.50.10.10', '52.80.52.52', '2400:7fc0:849e:200::8', '2404:c2c0:85d8:901::8', '117.50.60.30', '52.80.60.30'] },
-        { type: 'field', outboundTag: 'direct', ip: ['geoip:cn'] },
-        { type: 'field', outboundTag: 'direct', domain: ['geosite:cn'] },
+        { type: 'field', outboundTag: 'direct', domain: DOMESTIC_DNS_DIRECT_DOMAINS },
+        { type: 'field', outboundTag: 'direct', ip: DOMESTIC_DNS_DIRECT_IPS },
         { type: 'field', port: '443', network: 'udp', outboundTag: 'block' },
         { type: 'field', outboundTag: 'proxy', domain: OPENAI_PROXY_DOMAINS },
         { type: 'field', outboundTag: 'proxy', domain: ['geosite:geolocation-!cn'] },
@@ -182,6 +258,7 @@ function generateClientConfig({ vpsIP, uuid, publicKey, shortId }) {
   return {
     vlessLink,
     fullConfig,
+    clientImportNote: CLIENT_IMPORT_NOTE,
     manual: {
       address: vpsIP,
       port: 443,
@@ -257,6 +334,7 @@ def optimize(path):
     routing = cfg.setdefault('routing', {})
     routing['domainStrategy'] = 'AsIs'
     rules = routing.setdefault('rules', [])
+
     openai_rule = {'type': 'field', 'domain': OPENAI_PROXY_DOMAINS, 'outboundTag': 'proxy'}
     inbound_rule = {'type': 'field', 'inboundTag': ['vless-in'], 'outboundTag': 'proxy'}
     if inbound_rule in rules and openai_rule not in rules:

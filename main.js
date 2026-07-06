@@ -163,7 +163,7 @@ ipcMain.handle('deploy:run', wrapHandler(async (event, config) => {
     // Step 4: 创建配置目录
     await runStep('创建配置目录', 'mkdir -p /usr/local/etc/xray/modes');
 
-    // Step 5: 生成 IPRoyal 模式配置
+    // Step 5: 生成 ISP 代理模式配置
     const uuidStr = (uuid.data || '').trim();
     const shortIdStr = (shortId.data || '').trim();
 
@@ -185,7 +185,7 @@ ipcMain.handle('deploy:run', wrapHandler(async (event, config) => {
     }), null, 2);
 
     // 写入配置文件（用 heredoc 避免引号问题）
-    await runStep('写入 IPRoyal 配置', `cat > /usr/local/etc/xray/modes/iproyal.json << 'XRAYEOF'\n${iproyalConfig}\nXRAYEOF`);
+    await runStep('写入 ISP 代理配置', `cat > /usr/local/etc/xray/modes/iproyal.json << 'XRAYEOF'\n${iproyalConfig}\nXRAYEOF`);
     await runStep('写入直连配置', `cat > /usr/local/etc/xray/modes/direct.json << 'XRAYEOF'\n${directConfig}\nXRAYEOF`);
     await runStep('应用初始配置', 'cp /usr/local/etc/xray/modes/iproyal.json /usr/local/etc/xray/config.json');
 

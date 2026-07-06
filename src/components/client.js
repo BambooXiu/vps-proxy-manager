@@ -4,8 +4,10 @@ window.App = window.App || {};
 
 (function() {
   let _fullConfig = null;
+  let _currentConfig = null;
 
   function updateClientPage(config) {
+    _currentConfig = config;
     const infoBox = document.querySelector('.client-info-box');
     const qrSection = document.getElementById('qrSection');
     const configSection = document.getElementById('configSection');
@@ -14,7 +16,9 @@ window.App = window.App || {};
       infoBox.style.display = 'none';
       qrSection.style.display = 'block';
       configSection.style.display = 'block';
-      generateClientConfig(config);
+      generateClientConfig(config).catch((error) => {
+        App.notify('生成客户端配置失败: ' + getErrorMessage(error), 'error');
+      });
     } else {
       infoBox.style.display = 'flex';
       qrSection.style.display = 'none';
@@ -23,7 +27,7 @@ window.App = window.App || {};
   }
 
   async function generateClientConfig(config) {
-    if (!config.deploy.deployed) return;
+    if (!config.deploy.deployed) return false;
 
     try {
       const result = await window.api.client.generateConfig({
@@ -33,33 +37,54 @@ window.App = window.App || {};
         shortId: config.deploy.shortId,
       });
 
-      if (result.vlessLink) {
-        document.getElementById('vlessLink').value = result.vlessLink;
-        await generateQRCode(result.vlessLink);
-
-        const tbody = document.getElementById('configTableBody');
-        const m = result.manual;
-        tbody.innerHTML = `
-          <tr><td>地址</td><td>${m.address}</td></tr>
-          <tr><td>端口</td><td>${m.port}</td></tr>
-          <tr><td>协议</td><td>${m.protocol}</td></tr>
-          <tr><td>UUID</td><td>${m.uuid}</td></tr>
-          <tr><td>流控</td><td>${m.flow}</td></tr>
-          <tr><td>传输方式</td><td>${m.transport}</td></tr>
-          <tr><td>安全</td><td>${m.security}</td></tr>
-          <tr><td>SNI</td><td>${m.sni}</td></tr>
-          <tr><td>PublicKey</td><td>${m.publicKey}</td></tr>
-          <tr><td>ShortId</td><td>${m.shortId}</td></tr>
-          <tr><td>Fingerprint</td><td>${m.fingerprint}</td></tr>
-          <tr><td>MUX</td><td>${m.mux.enabled ? '开启' : (m.mux.note || '关闭')}</td></tr>
-          <tr><td>TCP FastOpen</td><td>开启</td></tr>
-          <tr><td>KeepAlive</td><td>30s</td></tr>
-        `;
-
-        _fullConfig = result.fullConfig;
+      if (result && result.success === false) {
+        throw new Error(result.error || '生成配置失败');
       }
+      if (!result || !result.vlessLink || !result.fullConfig || !result.manual) {
+        throw new Error('客户端配置数据不完整');
+      }
+
+      document.getElementById('vlessLink').value = result.vlessLink;
+      setImportHint(result.clientImportNote);
+      await generateQRCode(result.vlessLink);
+
+      const tbody = document.getElementById('configTableBody');
+      const m = result.manual;
+      tbody.innerHTML = `
+        <tr><td>地址</td><td>${m.address}</td></tr>
+        <tr><td>端口</td><td>${m.port}</td></tr>
+        <tr><td>协议</td><td>${m.protocol}</td></tr>
+        <tr><td>UUID</td><td>${m.uuid}</td></tr>
+        <tr><td>流控</td><td>${m.flow}</td></tr>
+        <tr><td>传输方式</td><td>${m.transport}</td></tr>
+        <tr><td>安全</td><td>${m.security}</td></tr>
+        <tr><td>SNI</td><td>${m.sni}</td></tr>
+        <tr><td>PublicKey</td><td>${m.publicKey}</td></tr>
+        <tr><td>ShortId</td><td>${m.shortId}</td></tr>
+        <tr><td>Fingerprint</td><td>${m.fingerprint}</td></tr>
+        <tr><td>MUX</td><td>${m.mux.enabled ? '开启' : (m.mux.note || '关闭')}</td></tr>
+        <tr><td>微信直连优化</td><td>仅完整配置导入后生效</td></tr>
+        <tr><td>TCP FastOpen</td><td>开启</td></tr>
+        <tr><td>KeepAlive</td><td>30s</td></tr>
+      `;
+
+      _fullConfig = result.fullConfig;
+      return true;
     } catch (error) {
+      _fullConfig = null;
       console.error('Generate config error:', error);
+      throw error;
+    }
+  }
+
+  function getErrorMessage(error) {
+    return error?.message || error || '未知错误';
+  }
+
+  function setImportHint(note) {
+    const hint = document.getElementById('clientImportHint');
+    if (hint && note) {
+      hint.textContent = note;
     }
   }
 
@@ -100,7 +125,7 @@ window.App = window.App || {};
       return;
     }
     navigator.clipboard.writeText(_fullConfig).then(() => {
-      App.notify('完整配置已复制，可直接粘贴到 v2rayN 导入', 'success');
+      App.notify('完整配置已复制，可粘贴到 v2rayN/v2rayNG 导入', 'success');
     }).catch(() => {
       const ta = document.createElement('textarea');
       ta.value = _fullConfig;
@@ -112,9 +137,26 @@ window.App = window.App || {};
     });
   }
 
+  async function regenerateConfig() {
+    if (!_currentConfig || !_currentConfig.deploy.deployed) {
+      App.notify('需要先完成部署才能生成配置', 'warning');
+      return;
+    }
+
+    try {
+      App.notify('正在重新生成配置...', 'info');
+      await generateClientConfig(_currentConfig);
+      App.notify('配置已重新生成，包含微信直连优化', 'success');
+    } catch (error) {
+      console.error('Regenerate config error:', error);
+      App.notify('生成配置失败: ' + getErrorMessage(error), 'error');
+    }
+  }
+
   function init() {
     document.getElementById('btnCopyLink').addEventListener('click', copyVLESSLink);
     document.getElementById('btnCopyFullConfig').addEventListener('click', copyFullConfig);
+    document.getElementById('btnRegenerateConfig').addEventListener('click', regenerateConfig);
   }
 
   window.App.client = { init, updateClientPage };

@@ -1,12 +1,12 @@
-# VPS Proxy Manager
+# NovaBit Proxy
 
 跨平台桌面应用（macOS / Windows），用于管理 VPS 代理模式切换。
 
 ## 功能
 
-- 🔄 一键切换 IPRoyal / 直连模式
+- 🔄 一键切换 ISP 代理 / 直连模式
 - 📊 实时查看连接状态和出口 IP
-- ⚙️ VPS 和 IPRoyal 配置管理
+- ⚙️ VPS 和 ISP 代理配置管理
 - 📱 生成客户端配置和二维码
 - 🚀 一键部署 Xray 到 VPS
 
@@ -33,14 +33,14 @@ npm run build:dmg
 npm run build:win
 ```
 
-构建完成后，安装程序 `之竹Proxy Setup 1.0.0.exe` 在 `dist/` 目录中。
+构建完成后，安装程序在 `dist/` 目录中。
 
 ## 使用说明
 
 1. **配置 VPS**: 在设置页面填入 VPS 的 SSH 连接信息
-2. **配置 IPRoyal**: 填入 IPRoyal 代理地址、端口、用户名、密码
+2. **配置 ISP 代理**: 填入代理地址、端口、用户名、密码
 3. **一键部署**: 在部署页面点击"开始部署"，自动安装 Xray 并配置代理
-4. **模式切换**: 在仪表盘页面切换 IPRoyal / 直连模式
+4. **模式切换**: 在仪表盘页面切换 ISP 代理 / 直连模式
 5. **客户端配置**: 部署完成后，在客户端页面获取配置链接和二维码
 
 ## 架构
@@ -50,11 +50,11 @@ npm run build:win
         │
         │ VLESS + Reality
         ▼
-RackNerd VPS (New York) 运行 Xray-core
+VPS 服务器运行 Xray-core
         │
         │ SOCKS5
         ▼
-IPRoyal 194.50.146.79 (US Delaware)
+ISP 代理服务器（以当前配置为准）
         │
         ▼
 海外网站
@@ -80,8 +80,8 @@ vps-proxy-manager/
 │       ├── ssh.js       # SSH 连接管理
 │       └── config.js    # 配置管理
 ├── assets/
-│   ├── icon.png         # 应用图标 (PNG)
-│   ├── icon.svg         # 应用图标 (SVG)
-│   └── icon.ico         # 应用图标 (Windows)
+│   ├── novabit-proxy-icon-1024.png  # macOS 图标源图
+│   ├── novabit-proxy-icon.icns      # macOS 应用图标
+│   └── icon.ico                     # Windows 应用图标
 └── package.json         # 项目配置
 ```

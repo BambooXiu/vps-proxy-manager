@@ -3,6 +3,7 @@
 window.App = window.App || {};
 
 (function() {
+  const PROXY_MODE_LABEL = 'ISP 代理';
   let connected = false;
   let connecting = false;
 
@@ -33,6 +34,37 @@ window.App = window.App || {};
     }
   }
 
+  function updateProxyModeDescription(config) {
+    const modeButton = document.getElementById('btnModeIproyal');
+    if (!modeButton) return;
+    const modeName = modeButton.querySelector('.mode-name');
+    const modeDesc = modeButton.querySelector('.mode-desc');
+
+    if (modeName) {
+      modeName.textContent = PROXY_MODE_LABEL;
+    }
+    if (modeDesc) {
+      const proxyAddress = config?.iproyal?.address;
+      modeDesc.textContent = proxyAddress ? `出口 ${proxyAddress}` : '出口以当前配置为准';
+    }
+  }
+
+  function isProxyProtocol(proto) {
+    return proto === 'socks' || proto === 'http';
+  }
+
+  async function verifyExitIP(config, proto) {
+    if (isProxyProtocol(proto)) {
+      const proxy = config.iproyal || {};
+      if (!proxy.address || !proxy.port) {
+        return { success: false, error: '请先配置 ISP 代理' };
+      }
+      return window.api.xray.verifyIproyal(proxy);
+    }
+
+    return window.api.xray.verifyIp();
+  }
+
   async function refreshDashboard(config) {
     if (!config.vps.host) {
       App.notify('请先配置 VPS 连接信息', 'error');
@@ -50,6 +82,7 @@ window.App = window.App || {};
     document.getElementById('dashConnectionState').style.color = 'var(--text-muted)';
     document.getElementById('dashCurrentMode').textContent = '--';
     document.getElementById('dashExitIP').textContent = '--';
+    updateProxyModeDescription(config);
 
     try {
       const connResult = await window.api.ssh.connect(config.vps);
@@ -79,10 +112,12 @@ window.App = window.App || {};
 
       const modeResult = await window.api.xray.currentMode();
       const dashMode = document.getElementById('dashCurrentMode');
+      let currentProto = 'unknown';
       if (modeResult.success) {
         const proto = modeResult.data;
-        if (proto === 'socks' || proto === 'http') {
-          dashMode.textContent = 'IPRoyal';
+        currentProto = proto;
+        if (isProxyProtocol(proto)) {
+          dashMode.textContent = PROXY_MODE_LABEL;
           dashMode.style.color = 'var(--green)';
           document.getElementById('btnModeIproyal').classList.add('active');
           document.getElementById('btnModeDirect').classList.remove('active');
@@ -96,7 +131,7 @@ window.App = window.App || {};
         }
       }
 
-      const ipResult = await window.api.xray.verifyIp();
+      const ipResult = await verifyExitIP(config, currentProto);
       document.getElementById('dashExitIP').textContent = ipResult.success ? ipResult.data : '--';
 
     } catch (error) {
@@ -133,16 +168,18 @@ window.App = window.App || {};
     try {
       const result = await window.api.xray.switchMode(mode);
       if (result.success) {
-        App.notify(`已切换到 ${mode === 'iproyal' ? 'IPRoyal' : '直连'} 模式`, 'success');
+        App.notify(`已切换到 ${mode === 'iproyal' ? PROXY_MODE_LABEL : '直连'} 模式`, 'success');
         document.getElementById('btnModeIproyal').classList.toggle('active', mode === 'iproyal');
         document.getElementById('btnModeDirect').classList.toggle('active', mode === 'direct');
+        updateProxyModeDescription(config);
 
         const dashMode = document.getElementById('dashCurrentMode');
-        dashMode.textContent = mode === 'iproyal' ? 'IPRoyal' : '直连';
+        dashMode.textContent = mode === 'iproyal' ? PROXY_MODE_LABEL : '直连';
         dashMode.style.color = mode === 'iproyal' ? 'var(--green)' : 'var(--yellow)';
 
         setTimeout(async () => {
-          const ipResult = await window.api.xray.verifyIp();
+          const proto = mode === 'iproyal' ? 'socks' : 'freedom';
+          const ipResult = await verifyExitIP(config, proto);
           document.getElementById('dashExitIP').textContent = ipResult.success ? ipResult.data : '--';
         }, 1500);
       } else {
@@ -174,7 +211,9 @@ window.App = window.App || {};
     }
 
     try {
-      const result = await window.api.xray.verifyIp();
+      const modeResult = await window.api.xray.currentMode();
+      const proto = modeResult.success ? modeResult.data : 'unknown';
+      const result = await verifyExitIP(config, proto);
       if (result.success) {
         document.getElementById('dashExitIP').textContent = result.data;
         App.notify('出口 IP: ' + result.data, 'success');
@@ -230,6 +269,7 @@ window.App = window.App || {};
   }
 
   function init(config) {
+    updateProxyModeDescription(config);
     document.getElementById('btnRefresh').addEventListener('click', () => refreshDashboard(config));
     document.getElementById('btnModeIproyal').addEventListener('click', () => switchMode(config, 'iproyal'));
     document.getElementById('btnModeDirect').addEventListener('click', () => switchMode(config, 'direct'));
