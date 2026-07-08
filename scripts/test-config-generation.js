@@ -9,6 +9,7 @@ const {
   generateClientConfig,
   generateOptimizeScript,
   RECOMMENDED_POLICY,
+  TIGER_PROXY_DOMAINS,
 } = require('../src/lib/xray-config');
 
 const sample = {
@@ -134,7 +135,7 @@ function testClientFullConfigRoutesDnsThroughDnsOutbound() {
   );
 }
 
-function testClientFullConfigKeepsDomesticDirectRulesBeforeProxyRules() {
+function testClientFullConfigKeepsExplicitDirectRulesBeforeProxyRules() {
   const generated = generateClientConfig(sample);
   const fullConfig = JSON.parse(generated.fullConfig);
   const rules = fullConfig.routing.rules;
@@ -143,13 +144,13 @@ function testClientFullConfigKeepsDomesticDirectRulesBeforeProxyRules() {
     rule.domain &&
     rule.domain.includes('domain:weixin.qq.com') &&
     rule.domain.includes('domain:tencent.com') &&
-    rule.domain.includes('geosite:cn')
+    !rule.domain.includes('geosite:cn')
   ));
-  const cnIpIndex = rules.findIndex((rule) => (
+  const privateIpIndex = rules.findIndex((rule) => (
     rule.outboundTag === 'direct' &&
     rule.ip &&
     rule.ip.includes('geoip:private') &&
-    rule.ip.includes('geoip:cn')
+    !rule.ip.includes('geoip:cn')
   ));
   const udp443BlockIndex = rules.findIndex((rule) => (
     rule.outboundTag === 'block' &&
@@ -167,12 +168,107 @@ function testClientFullConfigKeepsDomesticDirectRulesBeforeProxyRules() {
     rule.domain.includes('geosite:geolocation-!cn')
   ));
 
-  assert.ok(wechatDomainIndex > 0, 'WeChat/Tencent/CN domain direct rule should exist after DNS routing');
-  assert.ok(cnIpIndex > wechatDomainIndex, 'CN IP direct rule should follow the domain direct rule');
-  assert.ok(udp443BlockIndex > cnIpIndex, 'UDP 443 block should not preempt domestic direct rules');
+  assert.strictEqual(fullConfig.outbounds[0].tag, 'proxy', 'unmatched traffic should default to the proxy outbound');
+  assert.ok(wechatDomainIndex > 0, 'explicit WeChat/Tencent domain direct rule should exist after DNS routing');
+  assert.ok(privateIpIndex > wechatDomainIndex, 'private IP direct rule should follow the domain direct rule');
+  assert.ok(udp443BlockIndex > privateIpIndex, 'UDP 443 block should not preempt explicit direct rules');
   assert.ok(openAiProxyIndex > udp443BlockIndex, 'OpenAI proxy rule should stay after direct and UDP block rules');
   assert.ok(foreignProxyIndex > openAiProxyIndex, 'foreign proxy rule should stay after OpenAI proxy rule');
-  assert.deepStrictEqual(rules[cnIpIndex].ip, ['geoip:private', 'geoip:cn']);
+  assert.deepStrictEqual(rules[privateIpIndex].ip, ['geoip:private']);
+  assert.ok(
+    rules.every((rule) => !rule.domain || !rule.domain.includes('geosite:cn')),
+    'full client config should not broadly direct all China domains'
+  );
+  assert.ok(
+    rules.every((rule) => !rule.ip || !rule.ip.includes('geoip:cn')),
+    'full client config should not broadly direct all China IPs'
+  );
+  assert.ok(
+    fullConfig.dns.servers.some((server) => (
+      server.address === '8.8.8.8' &&
+      server.outboundTag === 'proxy' &&
+      !server.domains
+    )),
+    'unmatched DNS queries should use a proxy-routed overseas DNS server'
+  );
+}
+
+function testTigerDomainsUseClientProxyBeforeDomesticDirectRules() {
+  const expectedTigerDomains = [
+    'domain:itiger.com',
+    'domain:itigerup.com',
+    'domain:laohu8.com',
+    'domain:tigerbbs.com',
+    'domain:itigergrowtha.com',
+    'domain:tigerfintech.com',
+    'domain:tigerbrokers.com',
+    'domain:tigerbrokers.com.sg',
+    'domain:tigerbrokers.com.au',
+    'domain:tigerbrokers.nz',
+    'domain:tigertrade.app',
+    'domain:tigeresop.com',
+  ];
+  assert.deepStrictEqual(TIGER_PROXY_DOMAINS, expectedTigerDomains);
+
+  const generated = generateClientConfig(sample);
+  const fullConfig = JSON.parse(generated.fullConfig);
+  assert.ok(
+    fullConfig.dns.servers.some((server) => (
+      server.address === '8.8.8.8' &&
+      server.outboundTag === 'proxy' &&
+      server.domains.includes('domain:itiger.com')
+    )),
+    'Tiger Brokers DNS should use a proxy-routed overseas DNS server'
+  );
+
+  const clientRules = fullConfig.routing.rules;
+  const tigerClientIndex = clientRules.findIndex((rule) => (
+    rule.outboundTag === 'proxy' &&
+    rule.domain &&
+    rule.domain.includes('domain:itiger.com') &&
+    rule.domain.includes('domain:laohu8.com') &&
+    rule.domain.includes('domain:tigerbrokers.com.au')
+  ));
+  const wechatClientIndex = clientRules.findIndex((rule) => (
+    rule.outboundTag === 'direct' &&
+    rule.domain &&
+    rule.domain.includes('domain:weixin.qq.com')
+  ));
+
+  assert.ok(tigerClientIndex > 0, 'Tiger Brokers proxy rule should exist after DNS routing');
+  assert.ok(
+    tigerClientIndex < wechatClientIndex,
+    'Tiger Brokers proxy rule should preempt domestic direct rules'
+  );
+}
+
+function testTigerDomainsDoNotRequireServerRoutingChanges() {
+  const serverConfig = createServerConfig({
+    mode: 'iproyal',
+    uuid: sample.uuid,
+    privateKey: sample.privateKey,
+    shortId: sample.shortId,
+    iproyal: sample.iproyal,
+  });
+
+  assert.ok(
+    serverConfig.routing.rules.some((rule) => (
+      rule.outboundTag === 'proxy' &&
+      rule.inboundTag &&
+      rule.inboundTag.includes('vless-in')
+    )),
+    'server should keep the existing catch-all proxy rule for VLESS inbound traffic'
+  );
+  assert.ok(
+    serverConfig.routing.rules.every((rule) => (
+      !rule.domain || !rule.domain.includes('domain:itiger.com')
+    )),
+    'Tiger Brokers should not require a dedicated server-side routing rule'
+  );
+
+  const script = generateOptimizeScript();
+  assert.doesNotMatch(script, /TIGER_PROXY_DOMAINS/);
+  assert.doesNotMatch(script, /tiger_rule/);
 }
 
 function testOptimizeScriptDoesNotModifyServerRoutingForWechat() {
@@ -463,7 +559,7 @@ function testBrandingAndVersionAreGenericNovaBit() {
   const visibleText = html.replace(/<[^>]+>/g, ' ');
 
   assert.strictEqual(packageJson.name, 'novabit-proxy');
-  assert.strictEqual(packageJson.version, '1.2.3');
+  assert.strictEqual(packageJson.version, '1.2.5');
   assert.strictEqual(packageLock.name, packageJson.name);
   assert.strictEqual(packageLock.version, packageJson.version);
   assert.strictEqual(packageLock.packages[''].name, packageJson.name);
@@ -475,7 +571,7 @@ function testBrandingAndVersionAreGenericNovaBit() {
   assert.strictEqual(packageJson.build.nsis.shortcutName, 'NovaBit Proxy');
 
   assert.match(html, /<title>NovaBit Proxy<\/title>/);
-  assert.match(visibleText, /NovaBit Proxy v1\.2\.3/);
+  assert.match(visibleText, /NovaBit Proxy v1\.2\.5/);
   assert.doesNotMatch(visibleText, /修之竹|之竹Proxy|VPS Proxy|RackNerd|46\.203\.164\.88|204\.44\.87\.159/);
   assert.ok(
     fs.existsSync(path.join(__dirname, '..', 'assets', 'novabit-proxy-icon.icns')),
@@ -515,7 +611,9 @@ async function runTests() {
     testPackageLockVersionMatchesPackageVersion,
     testClientImportNoteExplainsRoutingRequiresFullConfig,
     testClientFullConfigRoutesDnsThroughDnsOutbound,
-    testClientFullConfigKeepsDomesticDirectRulesBeforeProxyRules,
+    testClientFullConfigKeepsExplicitDirectRulesBeforeProxyRules,
+    testTigerDomainsUseClientProxyBeforeDomesticDirectRules,
+    testTigerDomainsDoNotRequireServerRoutingChanges,
     testOptimizeScriptDoesNotModifyServerRoutingForWechat,
     testOptimizeScriptKeepsServerRoutingStrategyMinimal,
     testGuideExplainsFullJsonImportWorkflow,

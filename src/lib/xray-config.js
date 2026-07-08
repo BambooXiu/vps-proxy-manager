@@ -17,7 +17,23 @@ const OPENAI_PROXY_DOMAINS = [
   'domain:oaiusercontent.com',
 ];
 
-// 微信相关域名直连 - 解决微信访问慢问题
+// 客户端完整配置中强制老虎证券相关域名走海外代理
+const TIGER_PROXY_DOMAINS = [
+  'domain:itiger.com',
+  'domain:itigerup.com',
+  'domain:laohu8.com',
+  'domain:tigerbbs.com',
+  'domain:itigergrowtha.com',
+  'domain:tigerfintech.com',
+  'domain:tigerbrokers.com',
+  'domain:tigerbrokers.com.sg',
+  'domain:tigerbrokers.com.au',
+  'domain:tigerbrokers.nz',
+  'domain:tigertrade.app',
+  'domain:tigeresop.com',
+];
+
+// 微信/Tencent 相关域名直连 - 避免把所有中国域名都直连，影响需要海外出口的交易 App
 const WECHAT_DIRECT_DOMAINS = [
   'domain:weixin.qq.com',
   'domain:wechat.com',
@@ -31,12 +47,10 @@ const WECHAT_DIRECT_DOMAINS = [
   'domain:myqcloud.com',
   'domain:tencent-wechat.com',
   'domain:weixinbridge.com',
-  'geosite:cn',
 ];
 
 const WECHAT_DIRECT_IPS = [
   'geoip:private',
-  'geoip:cn',
 ];
 
 const DOMESTIC_DNS_DIRECT_DOMAINS = [
@@ -179,8 +193,12 @@ function generateClientConfig({ vpsIP, uuid, publicKey, shortId }) {
       servers: [
         { address: '223.5.5.5', port: 53, domains: WECHAT_DIRECT_DOMAINS, outboundTag: 'direct' },
         { address: '119.29.29.29', port: 53, domains: WECHAT_DIRECT_DOMAINS, outboundTag: 'direct' },
+        { address: '8.8.8.8', port: 53, domains: TIGER_PROXY_DOMAINS, outboundTag: 'proxy' },
+        { address: '1.1.1.1', port: 53, domains: TIGER_PROXY_DOMAINS, outboundTag: 'proxy' },
         { address: '8.8.8.8', port: 53, domains: ['geosite:geolocation-!cn'], outboundTag: 'proxy' },
         { address: '1.1.1.1', port: 53, domains: ['geosite:geolocation-!cn'], outboundTag: 'proxy' },
+        { address: '8.8.8.8', port: 53, outboundTag: 'proxy' },
+        { address: '1.1.1.1', port: 53, outboundTag: 'proxy' },
       ],
     },
     inbounds: [
@@ -243,6 +261,7 @@ function generateClientConfig({ vpsIP, uuid, publicKey, shortId }) {
       domainMatcher: 'mph',
       rules: [
         { type: 'field', port: '53', outboundTag: 'dns-out' },
+        { type: 'field', outboundTag: 'proxy', domain: TIGER_PROXY_DOMAINS },
         { type: 'field', outboundTag: 'direct', domain: WECHAT_DIRECT_DOMAINS },
         { type: 'field', outboundTag: 'direct', ip: WECHAT_DIRECT_IPS },
         { type: 'field', inboundTag: ['api'], outboundTag: 'api' },
@@ -359,6 +378,7 @@ PY
 module.exports = {
   OPENAI_PROXY_DOMAINS,
   RECOMMENDED_POLICY,
+  TIGER_PROXY_DOMAINS,
   createServerConfig,
   generateClientConfig,
   generateOptimizeScript,
